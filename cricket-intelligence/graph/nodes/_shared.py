@@ -74,6 +74,24 @@ def append_error(state: dict[str, Any], message: str) -> list[str]:
     return errors
 
 
+def to_payload(value: Any) -> Any:
+    return value.model_dump() if hasattr(value, "model_dump") else value
+
+
+def get_form_index_map(state: dict[str, Any]) -> dict[str, int]:
+    form = to_payload(state.get("form") or {})
+    mapping: dict[str, int] = {}
+    for item in form.get("team1_form_rankings", []) + form.get("team2_form_rankings", []):
+        name = normalize_text(item.get("name")).lower()
+        if name:
+            mapping[name] = int(item.get("form_index", 50))
+    return mapping
+
+
+def overseas_count(players: list[PlayerProfile]) -> int:
+    return sum(player.is_overseas for player in players)
+
+
 def message_content(messages: list[Any]) -> str:
     chunks: list[str] = []
     for message in messages:
