@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
+from graph.nodes._shared import append_error
 from graph.nodes import (
     batter,
     bowler,
@@ -20,11 +22,58 @@ from graph.nodes import (
     xi_selection,
 )
 from graph.state import CricketState
+from tools.cricket_tools import MOCK_SQUADS
 
 try:
     from langgraph.graph.state import CompiledStateGraph as CompiledGraph
 except Exception:
     CompiledGraph = Any
+
+
+NODE_OUTPUT_KEYS = {
+    "eligibility": "eligibility",
+    "venue": "venue_stats",
+    "form": "form",
+    "batter": "batter_data",
+    "bowler": "bowler_data",
+    "matchup": "matchups",
+    "toss": "toss",
+    "bowling_rotation": "bowling_rotation",
+    "xi_selection": "xi_selection",
+    "own_strategy": "own_strategy",
+    "opposition_strategy": "opposition_strategy",
+    "coach": "final_report",
+}
+
+
+def build_run_config(team1: str, team2: str, match_date: str, thread_id: str | None = None) -> dict[str, Any]:
+    return {
+        "run_name": "cricket-intelligence",
+        "metadata": {
+            "match": f"{team1} vs {team2}",
+            "date": match_date,
+        },
+        "configurable": {
+            "thread_id": thread_id or f"{team1.lower().replace(' ', '-')}-{team2.lower().replace(' ', '-')}-{match_date}"
+        },
+    }
+
+
+def _safe_node_runner(node_name: str, fn):
+    output_key = NODE_OUTPUT_KEYS.get(node_name)
+
+    def wrapped(state: CricketState) -> dict[str, Any]:
+        try:
+            return fn(state)
+        except Exception as exc:
+            update: dict[str, Any] = {
+                "errors": append_error(state, f"{node_name} node failed: {exc}"),
+            }
+            if output_key:
+                update[output_key] = state.get(output_key)
+            return update
+
+    return wrapped
 
 
 def _mark_layer_complete(state: CricketState, layer_name: str) -> dict[str, list[str]]:
@@ -59,21 +108,21 @@ def build_graph() -> CompiledGraph:
     workflow = StateGraph(CricketState)
 
     # Add all nodes
-    workflow.add_node("eligibility", eligibility.run)
-    workflow.add_node("venue", venue.run)
-    workflow.add_node("form", form.run)
-    workflow.add_node("batter", batter.run)
-    workflow.add_node("bowler", bowler.run)
-    workflow.add_node("matchup", matchup.run)
-    workflow.add_node("toss", toss.run)
-    workflow.add_node("bowling_rotation", bowling_rotation.run)
-    workflow.add_node("xi_selection", xi_selection.run)
-    workflow.add_node("own_strategy", own_strategy.run)
-    workflow.add_node("opposition_strategy", opposition_strategy.run)
-    workflow.add_node("coach", coach.run)
-    workflow.add_node("layer1_join", layer1_join)
-    workflow.add_node("layer2_join", layer2_join)
-    workflow.add_node("layer3_join", layer3_join)
+    workflow.add_node("eligibility", _safe_node_runner("eligibility", eligibility.run))
+    workflow.add_node("venue", _safe_node_runner("venue", venue.run))
+    workflow.add_node("form", _safe_node_runner("form", form.run))
+    workflow.add_node("batter", _safe_node_runner("batter", batter.run))
+    workflow.add_node("bowler", _safe_node_runner("bowler", bowler.run))
+    workflow.add_node("matchup", _safe_node_runner("matchup", matchup.run))
+    workflow.add_node("toss", _safe_node_runner("toss", toss.run))
+    workflow.add_node("bowling_rotation", _safe_node_runner("bowling_rotation", bowling_rotation.run))
+    workflow.add_node("xi_selection", _safe_node_runner("xi_selection", xi_selection.run))
+    workflow.add_node("own_strategy", _safe_node_runner("own_strategy", own_strategy.run))
+    workflow.add_node("opposition_strategy", _safe_node_runner("opposition_strategy", opposition_strategy.run))
+    workflow.add_node("coach", _safe_node_runner("coach", coach.run))
+    workflow.add_node("layer1_join", _safe_node_runner("layer1_join", layer1_join))
+    workflow.add_node("layer2_join", _safe_node_runner("layer2_join", layer2_join))
+    workflow.add_node("layer3_join", _safe_node_runner("layer3_join", layer3_join))
 
     # Entry point
     workflow.set_entry_point("eligibility")
@@ -118,3 +167,35 @@ def build_graph() -> CompiledGraph:
 
 app_graph = build_graph()
 intelligence_graph = app_graph
+
+
+async def demo() -> None:
+    state: CricketState = {
+        "team1_name": "Chennai Super Kings",
+        "team2_name": "Rajasthan Royals",
+        "venue": "Chepauk",
+        "match_date": "2026-03-30",
+        "team1_squad_raw": MOCK_SQUADS["Chennai Super Kings"],
+        "team2_squad_raw": MOCK_SQUADS["Rajasthan Royals"],
+        "eligibility": None,
+        "venue_stats": None,
+        "form": None,
+        "batter_data": None,
+        "bowler_data": None,
+        "matchups": None,
+        "toss": None,
+        "bowling_rotation": None,
+        "xi_selection": None,
+        "own_strategy": None,
+        "opposition_strategy": None,
+        "final_report": None,
+        "errors": [],
+        "completed_layers": [],
+        "messages": [],
+    }
+
+    result = await app_graph.ainvoke(
+        state,
+        config=build_run_config("Chennai Super Kings", "Rajasthan Royals", "2026-03-30", "demo-csk-rr"),
+    )
+    print(json.dumps(result["final_report"].model_dump() if hasattr(result["final_report"], "model_dump") else result["final_report"], indent=2))

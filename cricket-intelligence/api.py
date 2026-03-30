@@ -5,13 +5,13 @@ import json
 import uuid
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from config import LANGCHAIN_API_KEY, get_llm
-from graph.graph import app_graph
+from graph.graph import app_graph, build_run_config
 from graph.state import CricketState
 from schemas.models import FinalReport
 from tools.cricket_tools import MOCK_SQUADS, MOCK_VENUE_STATS, get_squad
@@ -231,68 +231,25 @@ async def root() -> dict[str, str]:
 @app.post("/analyze", response_model=FinalReport)
 async def analyze(request: AnalyzeRequest) -> FinalReport:
     initial_state = await build_initial_state(request)
-    config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+    config = build_run_config(request.team1, request.team2, request.match_date, str(uuid.uuid4()))
     result = await app_graph.ainvoke(initial_state, config=config)
     return FinalReport.model_validate(_to_payload(result["final_report"]))
 
 
 @app.post("/analyze/stream")
 async def analyze_stream(request: AnalyzeRequest) -> EventSourceResponse:
-    initial_state = await build_initial_state(request)
-    config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+    return EventSourceResponse(_analyze_stream_generator(request))
 
-    async def event_generator():
-        final_report: dict[str, Any] | None = None
 
-        async for event in app_graph.astream_events(initial_state, config=config, version="v2"):
-            node_name = _event_node_name(event)
-            if event.get("event") != "on_chain_end" or not node_name:
-                continue
-
-            output = _to_payload((event.get("data", {}) or {}).get("output", {}))
-            layer_name, progress = NODE_PROGRESS[node_name]
-
-            if node_name == "coach":
-                final_report = _to_payload(output.get("final_report", {}))
-                yield {
-                    "event": "message",
-                    "data": json.dumps(
-                        {
-                            "layer": "complete",
-                            "status": "done",
-                            "report": final_report,
-                            "progress": 100,
-                        }
-                    ),
-                }
-                return
-
-            yield {
-                "event": "message",
-                "data": json.dumps(
-                    {
-                        "layer": layer_name,
-                        "status": "complete",
-                        "summary": _node_summary(node_name, output),
-                        "progress": progress,
-                    }
-                ),
-            }
-
-        if final_report is None:
-            yield {
-                "event": "message",
-                "data": json.dumps(
-                    {
-                        "layer": "complete",
-                        "status": "done",
-                        "report": {"error": "Graph completed without a final report."},
-                        "progress": 100,
-                    }
-                ),
-            }
-
-    return EventSourceResponse(event_generator())
+@app.get("/analyze/stream")
+async def analyze_stream_get(
+    team1: str = Query(...),
+    team2: str = Query(...),
+    venue: str = Query(...),
+    match_date: str = Query(...),
+) -> EventSourceResponse:
+    request = AnalyzeRequest(team1=team1, team2=team2, venue=venue, match_date=match_date)
+    return EventSourceResponse(_analyze_stream_generator(request))
 
 
 @app.get("/teams")
@@ -330,3 +287,64 @@ async def health() -> dict[str, Any]:
         "langsmith_enabled": bool(LANGCHAIN_API_KEY),
         "graph_nodes": graph_nodes,
     }
+
+
+async def _analyze_stream_generator(request: AnalyzeRequest):
+    initial_state = await build_initial_state(request)
+    config = build_run_config(request.team1, request.team2, request.match_date, str(uuid.uuid4()))
+    final_report: dict[str, Any] | None = None
+    collected_errors: list[str] = []
+
+    async for event in app_graph.astream_events(initial_state, config=config, version="v2"):
+        node_name = _event_node_name(event)
+        if event.get("event") != "on_chain_end" or not node_name:
+            continue
+
+        output = _to_payload((event.get("data", {}) or {}).get("output", {}))
+        layer_name, progress = NODE_PROGRESS[node_name]
+        for error in output.get("errors", []):
+            if error not in collected_errors:
+                collected_errors.append(error)
+
+        if node_name == "coach":
+            final_report = _to_payload(output.get("final_report", {}))
+            yield {
+                "event": "message",
+                "data": json.dumps(
+                    {
+                        "layer": "complete",
+                        "status": "done",
+                        "report": final_report,
+                        "errors": collected_errors,
+                        "progress": 100,
+                    }
+                ),
+            }
+            return
+
+        yield {
+            "event": "message",
+            "data": json.dumps(
+                {
+                    "layer": layer_name,
+                    "status": "complete",
+                    "summary": _node_summary(node_name, output),
+                    "warnings": collected_errors,
+                    "progress": progress,
+                }
+            ),
+        }
+
+    if final_report is None:
+        yield {
+            "event": "message",
+            "data": json.dumps(
+                {
+                    "layer": "complete",
+                    "status": "done",
+                    "report": {"error": "Graph completed without a final report."},
+                    "errors": collected_errors,
+                    "progress": 100,
+                }
+            ),
+        }

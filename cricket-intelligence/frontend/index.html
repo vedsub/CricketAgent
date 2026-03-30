@@ -7,63 +7,133 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main class="app-shell">
-      <section class="hero">
-        <p class="eyebrow">Cricket Intelligence</p>
-        <h1>Plan a match strategy from squad, venue, and opponent context.</h1>
-        <p class="intro">
-          This starter frontend posts your inputs to the FastAPI backend and renders the graph output.
-        </p>
-      </section>
-
-      <section class="panel">
-        <form id="analysis-form">
-          <label>
-            API Base URL
-            <input id="api-base" type="text" value="http://localhost:8000" />
-          </label>
-          <label>
-            Your Team
-            <input id="own-team" type="text" value="Cricket Intelligence XI" />
-          </label>
-          <label>
-            Opponent
-            <input id="opponent" type="text" placeholder="Mumbai Indians" required />
-          </label>
-          <label>
-            Venue
-            <input id="venue" type="text" placeholder="Wankhede Stadium" required />
-          </label>
-          <label>
-            Format
-            <select id="format">
-              <option value="T20">T20</option>
-              <option value="ODI">ODI</option>
-              <option value="Test">Test</option>
-            </select>
-          </label>
-          <label>
-            Squad
-            <textarea
-              id="squad"
-              rows="10"
-              placeholder="Enter one player per line"
-            ></textarea>
-          </label>
-          <button type="submit">Run Analysis</button>
-        </form>
-      </section>
-
-      <section class="panel output">
-        <div class="output-header">
-          <h2>Result</h2>
-          <p id="status">Waiting for input.</p>
+    <div class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">🏏 Cricket Intelligence</p>
+          <h1>AI-Powered IPL Pre-Match Analysis</h1>
+          <p class="subtitle">Powered by LangGraph Multi-Agent System</p>
         </div>
-        <pre id="result">{
-  "message": "Submit the form to see the scaffolded intelligence response."
-}</pre>
-      </section>
-    </main>
+      </header>
+
+      <main class="dashboard">
+        <section class="card input-card">
+          <div class="section-heading">
+            <h2>Match Setup</h2>
+            <p>Choose the matchup, venue, and date to launch the full agent pipeline.</p>
+          </div>
+
+          <form id="analysis-form" class="analysis-form">
+            <div class="form-grid">
+              <label>
+                Team 1
+                <select id="team1" required></select>
+              </label>
+
+              <label>
+                Team 2
+                <select id="team2" required></select>
+              </label>
+
+              <label>
+                Venue
+                <select id="venue" required></select>
+              </label>
+
+              <label>
+                Match Date
+                <input id="match-date" type="date" required />
+              </label>
+            </div>
+
+            <button id="run-button" class="run-button" type="submit">⚡ Run Analysis</button>
+          </form>
+        </section>
+
+        <section id="terminal-section" class="card terminal-card hidden">
+          <div class="terminal-header">
+            <div>
+              <h2>🔄 Agent Pipeline Running...</h2>
+              <p>Live node completions stream here as the LangGraph workflow progresses.</p>
+            </div>
+            <div class="loader-wrap">
+              <span class="loader" aria-hidden="true"></span>
+            </div>
+          </div>
+
+          <div class="progress-shell" aria-label="Analysis progress">
+            <div id="progress-bar" class="progress-bar"></div>
+          </div>
+
+          <div id="terminal" class="terminal" aria-live="polite"></div>
+        </section>
+
+        <section id="results-section" class="results-section hidden">
+          <div id="warning-banner" class="warning-banner hidden"></div>
+
+          <div class="results-grid">
+            <article class="card result-card">
+              <div class="card-header">
+                <h3>Match Overview</h3>
+              </div>
+              <div id="match-overview" class="overview-block"></div>
+            </article>
+
+            <article class="card result-card">
+              <div class="card-header">
+                <h3>Toss Recommendation</h3>
+              </div>
+              <div id="toss-card" class="toss-block"></div>
+            </article>
+
+            <article class="card result-card">
+              <div class="card-header">
+                <h3 id="team1-xi-title">Team 1 Playing XI</h3>
+              </div>
+              <div id="team1-xi-card"></div>
+            </article>
+
+            <article class="card result-card">
+              <div class="card-header">
+                <h3 id="team2-xi-title">Team 2 Playing XI</h3>
+              </div>
+              <div id="team2-xi-card"></div>
+            </article>
+
+            <article class="card result-card wide-card">
+              <div class="card-header">
+                <h3>Key Matchups</h3>
+              </div>
+              <div id="matchups-grid" class="matchups-grid"></div>
+            </article>
+
+            <article class="card result-card wide-card">
+              <div class="card-header">
+                <h3>Bowling Plans</h3>
+                <div class="tabs" id="bowling-tabs">
+                  <button class="tab-button active" data-team="team1" type="button">Team 1</button>
+                  <button class="tab-button" data-team="team2" type="button">Team 2</button>
+                </div>
+              </div>
+              <div id="bowling-plan-content" class="bowling-plan-content"></div>
+            </article>
+
+            <article class="card result-card">
+              <div class="card-header">
+                <h3>Target &amp; Prediction</h3>
+              </div>
+              <div id="target-card" class="target-card"></div>
+            </article>
+          </div>
+
+          <div class="results-actions">
+            <button id="download-json" class="download-button" type="button">Download JSON</button>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">Built with LangGraph + GPT-4o-mini | Resume Project</footer>
+    </div>
 
     <script src="./app.js" defer></script>
   </body>

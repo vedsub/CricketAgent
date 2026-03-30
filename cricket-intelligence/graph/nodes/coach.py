@@ -77,6 +77,8 @@ def _fallback_report(state: CricketState) -> FinalReport:
         toss_recommendation=toss_output,
         team1_playing_xi=xi.get("team1_xi", []),
         team2_playing_xi=xi.get("team2_xi", []),
+        team1_impact_player=xi.get("team1_impact_player", {}),
+        team2_impact_player=xi.get("team2_impact_player", {}),
         team1_bowling_plan=to_payload(state.get("bowling_rotation") or {}),
         team2_bowling_plan={"plan": opposition_strategy.get("death_overs_plan", "Mirror the matchup-led death plan for the opposition innings.")},
         first_innings_target=first_innings_target,

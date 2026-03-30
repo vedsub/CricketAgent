@@ -138,6 +138,8 @@ class FinalReport(BaseModel):
     toss_recommendation: TossOutput
     team1_playing_xi: list[XIPlayer]
     team2_playing_xi: list[XIPlayer]
+    team1_impact_player: dict[str, Any] = Field(default_factory=dict)
+    team2_impact_player: dict[str, Any] = Field(default_factory=dict)
     team1_bowling_plan: dict[str, Any]
     team2_bowling_plan: dict[str, Any]
     first_innings_target: int

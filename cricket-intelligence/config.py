@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from functools import lru_cache
 
@@ -19,6 +20,15 @@ if OPENAI_API_KEY:
     os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 if LANGCHAIN_API_KEY:
     os.environ["LANGCHAIN_API_KEY"] = LANGCHAIN_API_KEY
+
+if not OPENAI_API_KEY:
+    raise RuntimeError(
+        "OPENAI_API_KEY is required to start cricket-intelligence. "
+        "Add it to your environment or .env file before running the app."
+    )
+
+if not CRICAPI_KEY:
+    logging.warning("CRICAPI_KEY is not configured. The project will use mock cricket data.")
 
 
 @lru_cache(maxsize=1)
