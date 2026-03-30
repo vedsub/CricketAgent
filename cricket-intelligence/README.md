@@ -172,8 +172,3 @@ Tracing is enabled with `LANGCHAIN_TRACING_V2=true` and the graph is invoked wit
 
 Use `make trace` to open LangSmith.
 
-## Resume Bullet Points
-
-- Built a production-grade multi-agent LLM system using LangGraph orchestrating 12 specialized AI agents across 4 layers for real-time IPL match intelligence.
-- Designed typed shared state, structured outputs, SSE streaming, and LangSmith tracing for observable end-to-end agent execution.
-- Delivered a FastAPI backend and a dark analytics dashboard in vanilla HTML, CSS, and JavaScript for live pre-match decision support.
