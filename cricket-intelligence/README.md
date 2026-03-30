@@ -19,6 +19,39 @@ The system is organized as a 4-layer agent pipeline with typed shared state:
 - Layer 3 builds own-team and opposition strategy in parallel.
 - Layer 4 synthesizes everything into a final pre-match briefing.
 
+### Visual Architecture
+
+```mermaid
+flowchart TD
+    I["Inputs<br/>Team 1 Squad<br/>Team 2 Squad<br/>Venue<br/>Match Date"] --> E["Layer 0: Eligibility Agent<br/>Nationality checks<br/>Overseas validation<br/>Squad validation<br/>Name resolution"]
+
+    E --> V["Venue Agent"]
+    E --> F["Form Agent"]
+    E --> B["Batter Agent"]
+    E --> BW["Bowler Agent"]
+
+    V --> T["Layer 2: Tactical Agents"]
+    F --> T
+    B --> T
+    BW --> T
+
+    T --> M["Matchup Agent"]
+    T --> TS["Toss Agent"]
+    T --> BR["Bowling Rotation Agent"]
+
+    M --> XI["Layer 2.5: XI Selection Agent<br/>Select XI<br/>Impact player strategy"]
+    TS --> XI
+    BR --> XI
+
+    XI --> OS["Own Team Strategy Agent"]
+    XI --> OPS["Opposition Strategy Agent"]
+
+    OS --> C["Layer 4: Coach Agent<br/>Final synthesis"]
+    OPS --> C
+
+    C --> O["Outputs<br/>Playing XIs<br/>Bowling plans<br/>Batting orders<br/>Targets<br/>JSON report"]
+```
+
 ## LangGraph DAG
 
 ```text
@@ -65,10 +98,68 @@ eligibility
 
 `make demo` runs a hardcoded Chennai Super Kings vs Rajasthan Royals example at Chepauk on `2026-03-30` using mock squads.
 
-Demo GIF placeholder:
+### Simulated Output Example
 
 ```text
-[ Add demo GIF here ]
+============================================================
+LAYER 1 - BATTER AGENT
+============================================================
+
+[OK] Batter Agent complete - 50 players profiled
+  Type-vulnerable batters : 0
+  High venue SR index     : ['Tim David', 'Romario Shepherd', 'Travis Head', 'Heinrich Klaasen']
+
+============================================================
+LAYER 2 - MATCHUP AGENT
+============================================================
+
+Building head-to-head matchup matrix...
+  Head-to-head matchups found: 55
+Building batter vs bowling-type matchups...
+  Bowling types detected: []
+  Batter vs bowling-type matchups found: 0
+Building bowling-type vs batting-hand matchups...
+  Bowling-type vs batting-hand matchups found: 0
+
+Head-to-head danger matchups (batter dominates):
+  Ishan Kishan       vs Josh Hazlewood   SR:266.7 W:0 (6b)
+  Phil Salt          vs Harsh Dubey      SR:250.0 W:0 (6b)
+  Venkatesh Iyer     vs Pat Cummins      SR:246.2 W:0 (13b)
+
+Head-to-head exploit matchups (bowler dominates):
+  Kamindu Mendis     vs Josh Hazlewood   SR:66.7 W:2 (12b)
+
+[OK] Matchup Agent complete
+  H2H matchups       : 55
+  Type matchups      : 0
+  Bowl-hand insights : 0
+  Danger (H2H)       : 8
+  Exploit (H2H)      : 1
+
+============================================================
+IPL PRE-MATCH INTELLIGENCE REPORT
+============================================================
+
+MATCH: Chennai Super Kings vs Rajasthan Royals
+VENUE: Chepauk
+DATE: 2026-03-30
+TOSS RECOMMENDATION: BAT
+CONFIDENCE: 0.75
+
+EDGE:
+  Spin control through the middle overs is the clearest separator on this surface.
+
+KEY BATTLEGROUNDS:
+  - Ruturaj Gaikwad vs Trent Boult
+  - Shivam Dube vs Yuzvendra Chahal
+  - Sanju Samson vs Matheesha Pathirana
+
+TARGET:
+  First innings target: 168
+
+WHY:
+  Scoreboard pressure matters at Chepauk, and the surface is expected to get slower
+  as the match progresses.
 ```
 
 ## LangSmith Tracing
