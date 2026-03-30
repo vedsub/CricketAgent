@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cricket Intelligence</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <p class="eyebrow">Cricket Intelligence</p>
+        <h1>Plan a match strategy from squad, venue, and opponent context.</h1>
+        <p class="intro">
+          This starter frontend posts your inputs to the FastAPI backend and renders the graph output.
+        </p>
+      </section>
+
+      <section class="panel">
+        <form id="analysis-form">
+          <label>
+            API Base URL
+            <input id="api-base" type="text" value="http://localhost:8000" />
+          </label>
+          <label>
+            Your Team
+            <input id="own-team" type="text" value="Cricket Intelligence XI" />
+          </label>
+          <label>
+            Opponent
+            <input id="opponent" type="text" placeholder="Mumbai Indians" required />
+          </label>
+          <label>
+            Venue
+            <input id="venue" type="text" placeholder="Wankhede Stadium" required />
+          </label>
+          <label>
+            Format
+            <select id="format">
+              <option value="T20">T20</option>
+              <option value="ODI">ODI</option>
+              <option value="Test">Test</option>
+            </select>
+          </label>
+          <label>
+            Squad
+            <textarea
+              id="squad"
+              rows="10"
+              placeholder="Enter one player per line"
+            ></textarea>
+          </label>
+          <button type="submit">Run Analysis</button>
+        </form>
+      </section>
+
+      <section class="panel output">
+        <div class="output-header">
+          <h2>Result</h2>
+          <p id="status">Waiting for input.</p>
+        </div>
+        <pre id="result">{
+  "message": "Submit the form to see the scaffolded intelligence response."
+}</pre>
+      </section>
+    </main>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
